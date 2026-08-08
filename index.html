@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 FinanciaPro · Control Total</title>
+    <title>💰 Finanzas · Control Total</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
+        /* ============================================
+           RESET Y VARIABLES
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -738,10 +741,6 @@
             gap: 8px;
             flex-wrap: wrap;
         }
-        .loan-row .right .amount {
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
 
         .summary-bar {
             background: var(--bg-primary);
@@ -990,7 +989,7 @@
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
             </div>
-            <h1>FinanciaPro</h1>
+            <h1>Finanzas</h1>
         </div>
 
         <nav class="sidebar-nav">
@@ -1359,7 +1358,7 @@
     </main>
 
     <!-- ==========================================
-    JAVASCRIPT - TODAS LAS FUNCIONES
+    JAVASCRIPT
     ========================================== -->
     <script>
         // ==========================================
@@ -1404,7 +1403,6 @@
         let prestamos = JSON.parse(localStorage.getItem('prestamos')) || [];
         let ahorros = JSON.parse(localStorage.getItem('ahorros')) || [];
         let historial = JSON.parse(localStorage.getItem('historial')) || [];
-        let balanceTotal = parseFloat(localStorage.getItem('balanceTotal')) || 0;
 
         // Variables para los gráficos
         let chartTorta = null;
@@ -1412,43 +1410,14 @@
         let chartLinea = null;
 
         // ==========================================
-        // FUNCIÓN PARA RECALCULAR BALANCE DESDE CERO (CORREGIDA)
+        // FUNCIÓN PARA CALCULAR BALANCE DESDE CERO
         // ==========================================
-        function recalcularBalanceDesdeCero() {
+        function calcularBalance() {
             let total = 0;
-
-            // + Ingresos
             ingresos.forEach(i => total += i.monto);
-
-            // + Préstamos recibidos NO cancelados (me prestaron, tengo el dinero)
-            prestamos.forEach(p => {
-                if (p.tipo === 'recibo' && !p.cancelado) {
-                    total += p.monto;
-                }
-            });
-
-            // - Gastos (incluye préstamos dados y pagos de préstamos)
             gastos.forEach(g => total -= g.monto);
-
-            // - Gastos fijos pagados
-            fijos.forEach(f => {
-                if (f.pagado) {
-                    total -= f.monto;
-                }
-            });
-
-            // - Ahorros
+            fijos.forEach(f => { if (f.pagado) total -= f.monto; });
             ahorros.forEach(a => total -= a.ahorrado);
-
-            // ❌ NO restar préstamos dados porque YA están restados como gastos
-            // prestamos.forEach(p => {
-            //     if (p.tipo === 'doy' && !p.cancelado) {
-            //         total -= p.monto;
-            //     }
-            // });
-
-            balanceTotal = total;
-            localStorage.setItem('balanceTotal', balanceTotal.toString());
             return total;
         }
 
@@ -1462,7 +1431,6 @@
             localStorage.setItem('prestamos', JSON.stringify(prestamos));
             localStorage.setItem('ahorros', JSON.stringify(ahorros));
             localStorage.setItem('historial', JSON.stringify(historial));
-            localStorage.setItem('balanceTotal', balanceTotal.toString());
         }
 
         // ==========================================
@@ -1477,8 +1445,7 @@
                 fijos: fijos,
                 prestamos: prestamos,
                 ahorros: ahorros,
-                historial: historial,
-                balanceTotal: balanceTotal
+                historial: historial
             };
 
             const json = JSON.stringify(data, null, 2);
@@ -1510,7 +1477,7 @@
                         return;
                     }
 
-                    if (!confirm(`⚠️ ¿Estás seguro de restaurar estos datos?\n\nFecha del respaldo: ${data.fecha || 'Desconocida'}\nBalance: $${(data.balanceTotal || 0).toFixed(2)}\n\n¡Se sobrescribirán TODOS tus datos actuales!`)) {
+                    if (!confirm(`⚠️ ¿Estás seguro de restaurar estos datos?\n\nFecha del respaldo: ${data.fecha || 'Desconocida'}\n\n¡Se sobrescribirán TODOS tus datos actuales!`)) {
                         return;
                     }
 
@@ -1520,7 +1487,6 @@
                     prestamos = data.prestamos || [];
                     ahorros = data.ahorros || [];
                     historial = data.historial || [];
-                    balanceTotal = data.balanceTotal || 0;
 
                     guardarTodo();
                     renderAll();
@@ -1561,6 +1527,7 @@
                 }
             });
 
+            const balanceFinal = calcularBalance();
             const ahorroMes = ingresosMes - gastosMes;
 
             historial.push({
@@ -1568,7 +1535,7 @@
                 ingresos: ingresosMes,
                 gastos: gastosMes,
                 ahorro: ahorroMes,
-                balanceFinal: balanceTotal,
+                balanceFinal: balanceFinal,
                 fecha: new Date().toLocaleDateString()
             });
 
@@ -1576,11 +1543,10 @@
             gastos = gastos.filter(g => !esDelMesActual(g.fecha));
             fijos = fijos.filter(f => !(f.pagado && esDelMesActual(f.fecha)));
 
-            recalcularBalanceDesdeCero();
             guardarTodo();
             renderAll();
 
-            alert(`✅ Mes de ${mesNombre} cerrado correctamente.\n\n📈 Ingresos: $${ingresosMes.toFixed(2)}\n📉 Gastos: $${gastosMes.toFixed(2)}\n💰 Ahorro: $${ahorroMes.toFixed(2)}\n🏦 Balance final: $${balanceTotal.toFixed(2)}`);
+            alert(`✅ Mes de ${mesNombre} cerrado correctamente.\n\n📈 Ingresos: $${ingresosMes.toFixed(2)}\n📉 Gastos: $${gastosMes.toFixed(2)}\n💰 Ahorro: $${ahorroMes.toFixed(2)}\n🏦 Balance final: $${balanceFinal.toFixed(2)}`);
         }
 
         // ==========================================
@@ -1648,7 +1614,6 @@
             renderPrestamos();
             renderAhorros();
             renderHistorial();
-            recalcularBalanceDesdeCero();
             actualizarDashboard();
             actualizarContadores();
         }
@@ -1670,7 +1635,8 @@
         // DASHBOARD
         // ==========================================
         function actualizarDashboard() {
-            document.getElementById('balanceTotalDashboard').textContent = `$${balanceTotal.toFixed(2)}`;
+            const balance = calcularBalance();
+            document.getElementById('balanceTotalDashboard').textContent = `$${balance.toFixed(2)}`;
 
             let ingresosMes = 0;
             ingresos.forEach(i => {
@@ -1728,7 +1694,6 @@
             });
             prestamos.forEach(p => {
                 if (!p.cancelado) {
-                    const signo = p.tipo === 'recibo' ? '+' : '-';
                     movimientos.push({
                         tipo: 'prestamo',
                         desc: `${p.tipo === 'recibo' ? '📥' : '📤'} ${p.nombre}`,
@@ -1976,7 +1941,7 @@
         }
 
         // ==========================================
-        // PRÉSTAMOS (CORREGIDO - VERSIÓN DEFINITIVA)
+        // PRÉSTAMOS (NUEVA LÓGICA SIMPLE)
         // ==========================================
 
         function renderPrestamos() {
@@ -2033,7 +1998,7 @@
         }
 
         // ==========================================
-        // AGREGAR PRÉSTAMO
+        // AGREGAR PRÉSTAMO - LÓGICA CORRECTA
         // ==========================================
         function agregarPrestamo(tipo) {
             const nombre = document.getElementById('nomPrestamo').value.trim();
@@ -2046,37 +2011,35 @@
             const fecha = new Date().toLocaleDateString();
 
             if (tipo === 'recibo') {
-                // 📥 RECIBO préstamo → + dinero al balance
-                balanceTotal += monto;
-                localStorage.setItem('balanceTotal', balanceTotal.toString());
-
-                prestamos.push({
-                    nombre,
-                    monto,
-                    tipo: 'recibo',
-                    cancelado: false,
-                    fecha
-                });
-
-            } else {
-                // 📤 DOY préstamo → - dinero del balance
-                balanceTotal -= monto;
-                localStorage.setItem('balanceTotal', balanceTotal.toString());
-
-                // Creamos un gasto para que aparezca en el historial
-                gastos.push({
-                    desc: `💰 Préstamo dado a ${nombre}`,
+                // 📥 RECIBO préstamo → SE CREA UN INGRESO (NO afecta el balance directamente)
+                ingresos.push({
+                    desc: `📥 Préstamo recibido de ${nombre}`,
                     cat: 'Préstamos',
                     monto: monto,
                     fecha: fecha
                 });
-
                 prestamos.push({
-                    nombre,
-                    monto,
+                    nombre: nombre,
+                    monto: monto,
+                    tipo: 'recibo',
+                    cancelado: false,
+                    fecha: fecha
+                });
+
+            } else {
+                // 📤 DOY préstamo → SE CREA UN GASTO
+                gastos.push({
+                    desc: `📤 Préstamo dado a ${nombre}`,
+                    cat: 'Préstamos',
+                    monto: monto,
+                    fecha: fecha
+                });
+                prestamos.push({
+                    nombre: nombre,
+                    monto: monto,
                     tipo: 'doy',
                     cancelado: false,
-                    fecha
+                    fecha: fecha
                 });
             }
 
@@ -2087,7 +2050,7 @@
         }
 
         // ==========================================
-        // CANCELAR PRÉSTAMO (PAGAR O COBRAR) - CORREGIDO
+        // CANCELAR PRÉSTAMO - LÓGICA CORRECTA
         // ==========================================
         function cancelarPrestamo(i) {
             const p = prestamos[i];
@@ -2105,22 +2068,15 @@
             const fecha = new Date().toLocaleDateString();
 
             if (p.tipo === 'recibo') {
-                // 📥 PAGO préstamo recibido → - dinero del balance
-                balanceTotal -= p.monto;
-                localStorage.setItem('balanceTotal', balanceTotal.toString());
-
+                // 📥 PAGO préstamo recibido → se crea un GASTO
                 gastos.push({
                     desc: `📤 Pago de préstamo (${p.nombre})`,
                     cat: 'Préstamos',
                     monto: p.monto,
                     fecha: fecha
                 });
-
             } else {
-                // 📤 COBRO préstamo dado → + dinero al balance
-                balanceTotal += p.monto;
-                localStorage.setItem('balanceTotal', balanceTotal.toString());
-
+                // 📤 COBRO préstamo dado → se crea un INGRESO (gasto negativo)
                 gastos.push({
                     desc: `📥 Cobro de préstamo (${p.nombre})`,
                     cat: 'Préstamos',
@@ -2129,7 +2085,6 @@
                 });
             }
 
-            // ✅ IMPORTANTE: Marcar como cancelado DESPUÉS de actualizar el balance
             p.cancelado = true;
 
             guardarTodo();
@@ -2144,18 +2099,12 @@
 
             const p = prestamos[i];
 
-            // Si NO está cancelado, revertir el efecto en el balance
+            // Si NO está cancelado, eliminar el ingreso/gasto asociado
             if (!p.cancelado) {
                 if (p.tipo === 'recibo') {
-                    // 📥 RECIBO → al eliminar, resto el dinero
-                    balanceTotal -= p.monto;
-                    localStorage.setItem('balanceTotal', balanceTotal.toString());
+                    const idx = ingresos.findIndex(g => g.desc.includes(`Préstamo recibido de ${p.nombre}`));
+                    if (idx !== -1) ingresos.splice(idx, 1);
                 } else {
-                    // 📤 DOY → al eliminar, sumo el dinero
-                    balanceTotal += p.monto;
-                    localStorage.setItem('balanceTotal', balanceTotal.toString());
-
-                    // Eliminar el gasto asociado al préstamo dado
                     const idx = gastos.findIndex(g => g.desc.includes(`Préstamo dado a ${p.nombre}`));
                     if (idx !== -1) gastos.splice(idx, 1);
                 }
@@ -2167,7 +2116,6 @@
                 } else {
                     const idx = gastos.findIndex(g => g.desc.includes(`Cobro de préstamo (${p.nombre})`));
                     if (idx !== -1) gastos.splice(idx, 1);
-                    // También eliminar el gasto original del préstamo dado
                     const idx2 = gastos.findIndex(g => g.desc.includes(`Préstamo dado a ${p.nombre}`));
                     if (idx2 !== -1) gastos.splice(idx2, 1);
                 }
@@ -2184,19 +2132,8 @@
         function limpiarPrestamos() {
             if (!confirm('¿Eliminar TODOS los préstamos?')) return;
 
-            // Revertir TODOS los efectos en el balance
-            prestamos.forEach(p => {
-                if (!p.cancelado) {
-                    if (p.tipo === 'recibo') {
-                        balanceTotal -= p.monto;
-                    } else {
-                        balanceTotal += p.monto;
-                    }
-                }
-            });
-            localStorage.setItem('balanceTotal', balanceTotal.toString());
-
-            // Eliminar TODOS los gastos relacionados con préstamos
+            // Eliminar TODOS los ingresos/gastos relacionados con préstamos
+            ingresos = ingresos.filter(g => !g.cat.includes('Préstamos'));
             gastos = gastos.filter(g => !g.cat.includes('Préstamos'));
             prestamos = [];
 
@@ -2247,6 +2184,16 @@
             if (!nombre || !meta || meta <= 0) { alert('Completa los datos.'); return; }
             if (ahorrado > meta) { alert('El ahorrado no puede superar la meta.'); return; }
 
+            // Crear un gasto por el ahorro
+            if (ahorrado > 0) {
+                gastos.push({
+                    desc: `💰 Ahorro para "${nombre}"`,
+                    cat: 'Ahorros',
+                    monto: ahorrado,
+                    fecha: new Date().toLocaleDateString()
+                });
+            }
+
             ahorros.push({ nombre, meta, ahorrado });
             document.getElementById('nombreAhorro').value = '';
             document.getElementById('metaAhorro').value = '';
@@ -2265,12 +2212,24 @@
                 return;
             }
             ahorros[i].ahorrado += cantidad;
+
+            // Crear un gasto por el ahorro
+            gastos.push({
+                desc: `💰 Ahorro para "${ahorros[i].nombre}"`,
+                cat: 'Ahorros',
+                monto: cantidad,
+                fecha: new Date().toLocaleDateString()
+            });
+
             guardarTodo();
             renderAll();
         }
 
         function eliminarAhorro(i) {
             if (!confirm('¿Eliminar esta meta de ahorro?')) return;
+            // Eliminar los gastos asociados a este ahorro
+            const nombre = ahorros[i].nombre;
+            gastos = gastos.filter(g => !g.desc.includes(`Ahorro para "${nombre}"`));
             ahorros.splice(i, 1);
             guardarTodo();
             renderAll();
@@ -2278,6 +2237,7 @@
 
         function limpiarAhorros() {
             if (!confirm('¿Eliminar todas las metas de ahorro?')) return;
+            gastos = gastos.filter(g => !g.cat.includes('Ahorros'));
             ahorros = [];
             guardarTodo();
             renderAll();
@@ -2332,7 +2292,9 @@
             // --- 1. TORTA: Gastos por categoría ---
             const catCount = {};
             gastos.forEach(g => {
-                catCount[g.cat] = (catCount[g.cat] || 0) + g.monto;
+                if (g.monto > 0) {
+                    catCount[g.cat] = (catCount[g.cat] || 0) + g.monto;
+                }
             });
             const categorias = Object.keys(catCount);
             const valores = Object.values(catCount);
